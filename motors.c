@@ -19,6 +19,14 @@
 #define rightmotorA1 LATBbits.LATB0
 #define rightmotorA2 LATBbits.LATB1
 
+#define encoderLeft PORTCbits.RC0
+#define encoderRight PORTCbits.RC5
+
+#define LED1 LATBbits.LATB2
+#define LED2 LATBbits.LATB3 
+#define LED3 LATBbits.LATB4
+#define LED4 LATBbits.LATB5 
+
 void wait10ms(int del);
 
 int main(void)
@@ -26,9 +34,12 @@ int main(void)
        unsigned char markspace=127;     	//mark space value for 8 PWM (50% mark space ratio)
        TRISCbits.RC2 = 0;          //set CCP1(pin13) to an output pin
        TRISCbits.RC1 = 0;
+       TRISCbits.RC0 = 1;    //Port A all inputs
+       TRISCbits.RC5 = 1;
        TRISBbits.RB0 = 0;
        TRISBbits.RB1 = 0;
        TRISAbits.RA4 = 0;
+       TRISB=0b11000000;
        TRISAbits.RA5 = 0;
        PR2 = 0b11111111 ;    	//set period of PWM
        T2CON = 0b00000111 ;   //Timer 2(TMR2) on, Prescaler = 16
@@ -37,27 +48,24 @@ int main(void)
        CCPR1L = markspace;  //Load duty cycle into CCP1CON, PWM begins
        CCPR2L = markspace;
        
+        rightmotorA1 = 1;     
+         rightmotorA2 = 1;
+         leftmotorB1 = 1;
+         leftmotorB2 = 1;
+
+       LED1=0; LED2=0; LED3=0; LED4=0; 
+       int temp = encoderLeft;
+       int count = 0;
        while(1){
-           rightmotorA1 = 0;     //Add code here to drive the robot?s wheels
-           rightmotorA2 = 1;
-           leftmotorB1 = 0;
-           leftmotorB2 = 1;
-           wait10ms(100);
-           rightmotorA1 = 1;     //Add code here to drive the robot?s wheels
-           rightmotorA2 = 1;
-           leftmotorB1 = 1;
-           leftmotorB2 = 1;
-           wait10ms(100);
-           rightmotorA1 = 1;
-           rightmotorA2 = 0;
-           leftmotorB1 = 1;
-           leftmotorB2 = 0;
-           wait10ms(100);
-           rightmotorA1 = 1;     //Add code here to drive the robot?s wheels
-           rightmotorA2 = 1;
-           leftmotorB1 = 1;
-           leftmotorB2 = 1;
-           wait10ms(100);
+           if (temp != encoderLeft){
+               count++;
+           }
+           if (count > 400){LED1=1;}
+           if (count > 420){LED2=1;}
+           if (count > 440){LED3=1;}
+           if (count > 460){LED4=1;}
+           temp = encoderLeft;
+           printf("%d", count);
   
      }            	
 } //end main()

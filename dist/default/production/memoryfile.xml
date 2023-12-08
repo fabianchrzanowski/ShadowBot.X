@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project>
-  <executable name="dist/default/production\RobotProject.X.production.hex">
+  <executable name="dist/default/production/RobotProject.X.production.hex">
     <memory name="program">
       <units>bytes</units>
       <length>4096</length>
-      <used>742</used>
-      <free>3354</free>
+      <used>1420</used>
+      <free>2676</free>
     </memory>
     <memory name="data">
       <units>bytes</units>
       <length>512</length>
-      <used>11</used>
-      <free>501</free>
+      <used>30</used>
+      <free>482</free>
     </memory>
   </executable>
 </project>

@@ -1,4 +1,4 @@
-# 1 "motors.c"
+# 1 "general.c"
 # 1 "<built-in>" 1
 # 1 "<built-in>" 3
 # 288 "<built-in>" 3
@@ -6,7 +6,7 @@
 # 1 "<built-in>" 2
 # 1 "/Applications/microchip/mplabx/v6.15/packs/Microchip/PIC18Fxxxx_DFP/1.4.151/xc8/pic/include/language_support.h" 1 3
 # 2 "<built-in>" 2
-# 1 "motors.c" 2
+# 1 "general.c" 2
 
 
 
@@ -4122,7 +4122,7 @@ __attribute__((__unsupported__("The " "Write_b_eep" " routine is no longer suppo
 unsigned char __t1rd16on(void);
 unsigned char __t3rd16on(void);
 # 34 "/Applications/microchip/mplabx/v6.15/packs/Microchip/PIC18Fxxxx_DFP/1.4.151/xc8/pic/include/xc.h" 2 3
-# 10 "motors.c" 2
+# 10 "general.c" 2
 # 1 "/Applications/microchip/xc8/v2.45/pic/include/c99/stdio.h" 1 3
 # 24 "/Applications/microchip/xc8/v2.45/pic/include/c99/stdio.h" 3
 # 1 "/Applications/microchip/xc8/v2.45/pic/include/c99/bits/alltypes.h" 1 3
@@ -4275,54 +4275,57 @@ char *ctermid(char *);
 
 
 char *tempnam(const char *, const char *);
-# 11 "motors.c" 2
+# 11 "general.c" 2
 
 #pragma config OSC = HS
 #pragma config WDT = OFF
 #pragma config LVP = OFF
 #pragma config PWRT = ON
-# 30 "motors.c"
+# 32 "general.c"
+unsigned int setpoint_distance = 300;
+
+unsigned int readleftADC(void);
+unsigned int readrightADC(void);
 void wait10ms(int del);
+void turn(int dir, int dur);
+void acc(int dir, int dur);
+void flashLEDs(int dur);
+void facebeacon(void);
 
 int main(void)
 {
-       unsigned char markspace=127;
-       TRISCbits.RC2 = 0;
-       TRISCbits.RC1 = 0;
-       TRISCbits.RC0 = 1;
-       TRISCbits.RC5 = 1;
-       TRISBbits.RB0 = 0;
-       TRISBbits.RB1 = 0;
-       TRISAbits.RA4 = 0;
-       TRISB=0b11000000;
-       TRISAbits.RA5 = 0;
-       PR2 = 0b11111111 ;
-       T2CON = 0b00000111 ;
-       CCP1CON = (0x0c);
-       CCP2CON = (0x0c);
-       CCPR1L = markspace;
-       CCPR2L = markspace;
+# 52 "general.c"
+    TRISC = 0b11111001;
+    TRISA = 0b00001111;
+    TRISB = 0b11000000;
 
-        LATBbits.LATB0 = 1;
-         LATBbits.LATB1 = 1;
-         LATAbits.LATA4 = 1;
-         LATAbits.LATA5 = 1;
+    PR2 = 0b11111111 ;
+    T2CON = 0b00000111 ;
+    CCP1CON = (0x0c);
+    CCP2CON = (0x0c);
+    CCPR1L = 125;
+    CCPR2L = 125;
+    ADCON1=0b00001101;
+    ADCON2 = 0b10000010;
+    LATB=0;
 
-       LATBbits.LATB2=0; LATBbits.LATB3=0; LATBbits.LATB4=0; LATBbits.LATB5=0;
-       int temp = PORTCbits.RC0;
-       int count = 0;
-       while(1){
-           if (temp != PORTCbits.RC0){
-               count++;
-           }
-           if (count > 400){LATBbits.LATB2=1;}
-           if (count > 420){LATBbits.LATB3=1;}
-           if (count > 440){LATBbits.LATB4=1;}
-           if (count > 460){LATBbits.LATB5=1;}
-           temp = PORTCbits.RC0;
-           printf("%d", count);
+    flashLEDs(300);
 
-     }
+    while(1){
+        facebeacon();
+        if(readleftADC() >= setpoint_distance || readrightADC() >= setpoint_distance){
+            acc(0, 0);
+            flashLEDs(100);
+            wait10ms(10);
+            acc(-1, 100);
+            turn(-1, 60);
+            acc(1, 100);
+            turn(1, 60);
+        }
+        else {
+            acc(1, 10);
+        }
+    }
 }
 
 void wait10ms(int del){
@@ -4330,4 +4333,106 @@ void wait10ms(int del){
  for(c=0;c<del;c++)
      _delay((unsigned long)((10)*(10000000/4000.0)));
  return;
+}
+
+void acc(int dir, int dur)
+{
+    if(dir == 1){
+        LATBbits.LATB0 = 0;
+        LATBbits.LATB1 = 1;
+        LATAbits.LATA4 = 0;
+        LATAbits.LATA5 = 1;
+    }
+    else if(dir == -1){
+        LATBbits.LATB0 = 1;
+        LATBbits.LATB1 = 0;
+        LATAbits.LATA4 = 1;
+        LATAbits.LATA5 = 0;
+    }
+    else if(dir == 0)
+    {
+        LATBbits.LATB0 = 1;
+        LATBbits.LATB1 = 1;
+        LATAbits.LATA4 = 1;
+        LATAbits.LATA5 = 1;
+    }
+    wait10ms(dur);
+    return;
+}
+
+void flashLEDs(int dur){
+    for(int i=0;i<3;i++){
+        LATBbits.LATB2=1; LATBbits.LATB3=1; LATBbits.LATB4=1; LATBbits.LATB5=1;
+        wait10ms(dur/6);
+        LATBbits.LATB2=0; LATBbits.LATB3=0; LATBbits.LATB4=0; LATBbits.LATB5=0;
+        wait10ms(dur/6);
+    }
+}
+
+void facebeacon(void)
+{ while(PORTAbits.RA2 == 1 || PORTAbits.RA3 == 1){
+        if(PORTAbits.RA2 == 0){
+            LATBbits.LATB0 = 0;
+            LATBbits.LATB1 = 1;
+            LATAbits.LATA4 = 1;
+            LATAbits.LATA5 = 1;
+        }else if(PORTAbits.RA3 == 0){
+            LATBbits.LATB0 = 1;
+            LATBbits.LATB1 = 1;
+            LATAbits.LATA4 = 0;
+            LATAbits.LATA5 = 1;
+        }else if(PORTAbits.RA3 == 1 && PORTAbits.RA2 == 1){
+            LATBbits.LATB0 = 1;
+            LATBbits.LATB1 = 1;
+            LATAbits.LATA4 = 0;
+            LATAbits.LATA5 = 1;
+        }
+    }
+}
+
+void turn(int dir, int ang){
+    int ticks = 5 * ang/2;
+    int count = 0;
+    if (dir == 1){
+        LATBbits.LATB0 = 1;
+        LATBbits.LATB1 = 1;
+        LATAbits.LATA4 = 0;
+        LATAbits.LATA5 = 1;
+
+        int temp = PORTCbits.RC0;
+        while (count < ticks){
+            if (temp != PORTCbits.RC0){ count++; }
+            temp = PORTCbits.RC0;
+        }
+    }
+    else if (dir == -1){
+        LATBbits.LATB0 = 0;
+        LATBbits.LATB1 = 1;
+        LATAbits.LATA4 = 1;
+        LATAbits.LATA5 = 1;
+
+        int temp = PORTCbits.RC5;
+        while (count < ticks){
+            if (temp != PORTCbits.RC5){ count++; }
+            temp = PORTCbits.RC5;
+        }
+    }
+
+    LATBbits.LATB0 = 1;
+    LATBbits.LATB1 = 1;
+    LATAbits.LATA4 = 1;
+    LATAbits.LATA5 = 1;
+    return;
+}
+
+unsigned int readleftADC(void) {
+    ADCON0 = 0b00000011;
+    while (ADCON0bits.GO);
+    return ((ADRESH << 8) + ADRESL);
+}
+
+unsigned int readrightADC(void) {
+    ADCON0 = 0b00000111;
+    while (ADCON0bits.GO);
+    return ((ADRESH << 8) + ADRESL);
 }

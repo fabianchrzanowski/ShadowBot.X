@@ -18,73 +18,70 @@
 #define leftmotorB2 LATAbits.LATA5
 #define rightmotorA1 LATBbits.LATB0
 #define rightmotorA2 LATBbits.LATB1
-#define LED3 LATBbits.LATB4   //Define LED3
-#define LED1 LATBbits.LATB2
+#define LED1 LATBbits.LATB2 
+#define LED2 LATBbits.LATB3 
+#define LED3 LATBbits.LATB4
+#define LED4 LATBbits.LATB5 
 
 #define beaconLeft PORTAbits.RA2
 #define beaconRight PORTAbits.RA3
+
+#define encoderLeft PORTCbits.RC0
+#define encoderRight PORTCbits.RC5
 
 unsigned int setpoint_distance = 300;   //Distance set point
 
 unsigned int readleftADC(void);     //read left ADC
 unsigned int readrightADC(void);    //Read right ADC
 void wait10ms(int del);
-void turnright90(int dur);
-void turnleft90(int dur);
-void acc(int dir);
+void turn(int dir, int dur);
+void acc(int dir, int dur);
+void flashLEDs(int dur);
 void facebeacon(void);
 
 int main(void)
 {
-       unsigned char markspace=100;     	//mark space value for 8 PWM (50% mark space ratio)
-       TRISAbits.RA2 = 1;    //Port A all inputs
-       TRISAbits.RA3 = 1;
-       TRISAbits.RA4 = 0;
-       TRISAbits.RA5 = 0;
-       TRISCbits.RC2 = 0;          //set CCP1(pin13) to an output pin
-       TRISCbits.RC1 = 0;
-       TRISBbits.RB0 = 0;
-       TRISBbits.RB1 = 0;
-       
-       PR2 = 0b11111111 ;    	//set period of PWM
-       T2CON = 0b00000111 ;   //Timer 2(TMR2) on, Prescaler = 16
-       CCP1CON = (0x0c);        //0x0c enables PWM module CCP1
-       CCP2CON = (0x0c);
-       CCPR1L = markspace;  //Load duty cycle into CCP1CON, PWM begins
-       CCPR2L = markspace;
-       ADCON1=0b00001101;  //Set voltage reference and port A0 as analogue input
-       ADCON2 = 0b10000010; // Fosc/32, A/D result right justified
-       LATB=0;  
-       TRISB=0b11000000; //Turn all Leds off
-       
-       
-       while(1){
-           facebeacon();
-            if(readleftADC() <= setpoint_distance && readrightADC() <= setpoint_distance){  //If left hand sensor detects an object
-                LED3=0;                       //equal or greater than setpoint_distance
-                acc(1);
-                wait10ms(10);
-            }
-            else {   
-                    acc(0);      //breaking
-                    for(int i=0;i<3;i++){    //flash leds after obstacle detection 
-                        LED3=1;
-                        wait10ms(10);
-                        LED3=0;
-                        wait10ms(10);
-                    }
-                    wait10ms(10);
-                    acc(-1);     //go back for 2s
-                    wait10ms(200);
-                    turnleft90(100);  
-                    acc(1);      // go left for 2s
-                    wait10ms(200);
-                    turnright90(80);
+    //TRISAbits.RA2 = 1;    //Port A all inputs
+    //TRISAbits.RA3 = 1;
+    //TRISAbits.RA4 = 0;
+    //TRISAbits.RA5 = 0;
+    //TRISCbits.RC2 = 0;          //set CCP1(pin13) to an output pin
+    //TRISCbits.RC1 = 0;
+    //TRISCbits.RC0 = 1;    //Port A all inputs
+    //TRISCbits.RC5 = 1;
+    TRISC = 0b11111001;
+    TRISA = 0b00001111;
+    TRISB = 0b11000000; //Turn all Leds off
 
-     }            	
-} 
-       }
-//end main()
+    PR2 = 0b11111111 ;    	//set period of PWM
+    T2CON = 0b00000111 ;   //Timer 2(TMR2) on, Prescaler = 16
+    CCP1CON = (0x0c);        //0x0c enables PWM module CCP1
+    CCP2CON = (0x0c);
+    CCPR1L = 125;  //Load duty cycle into CCP1CON, PWM begins
+    CCPR2L = 125;
+    ADCON1=0b00001101;  //Set voltage reference and port A0 as analogue input
+    ADCON2 = 0b10000010; // Fosc/32, A/D result right justified
+    LATB=0;  
+    
+    flashLEDs(300);
+    
+    while(1){
+        facebeacon();
+        if(readleftADC() >= setpoint_distance || readrightADC() >= setpoint_distance){  //If obstacle
+            acc(0, 0);      //breaking
+            flashLEDs(100);
+            wait10ms(10);
+            acc(-1, 100);     //go back for 2s CHANGE to 200
+            turn(-1, 60);  
+            acc(1, 100);      // go left for 2s CHANGE
+            turn(1, 60);
+        }
+        else {                    
+            acc(1, 10);
+        }            	
+    }
+}
+
 void wait10ms(int del){     	 //delay function
 	int c;
 	for(c=0;c<del;c++)
@@ -92,7 +89,7 @@ void wait10ms(int del){     	 //delay function
 	return;
 }
 
-void acc(int dir)
+void acc(int dir, int dur)
 {
     if(dir == 1){
         rightmotorA1 = 0;     
@@ -113,11 +110,22 @@ void acc(int dir)
         leftmotorB1 = 1;
         leftmotorB2 = 1;
     }
+    wait10ms(dur);
+    return;
+}
+
+void flashLEDs(int dur){
+    for(int i=0;i<3;i++){    //flash leds after obstacle detection 
+        LED1=1; LED2=1; LED3=1; LED4=1;
+        wait10ms(dur/6);
+        LED1=0; LED2=0; LED3=0; LED4=0;
+        wait10ms(dur/6);
+    }
 }
 
 void facebeacon(void)
 {   while(beaconLeft == 1 || beaconRight == 1){ 
-        if(IRLeft == 0){
+        if(beaconLeft == 0){
             rightmotorA1 = 0;
             rightmotorA2 = 1;
             leftmotorB1 = 1;
@@ -136,21 +144,38 @@ void facebeacon(void)
     }
 }
 
-void turnright90(int dur){
-    rightmotorA1 = 1;
-    rightmotorA2 = 1;
-    leftmotorB1 = 0;
-    leftmotorB2 = 1;
-    wait10ms(dur);
-    return;
-}
-
-void turnleft90(int dur){
-    rightmotorA1 = 0;
+void turn(int dir, int ang){
+    int ticks = 5 * ang/2;
+    int count = 0;
+    if (dir == 1){
+        rightmotorA1 = 1;
+        rightmotorA2 = 1;
+        leftmotorB1 = 0;
+        leftmotorB2 = 1;
+        
+        int temp = encoderLeft;
+        while (count < ticks){
+            if (temp != encoderLeft){ count++; } 
+            temp = encoderLeft;
+        }
+    }
+    else if (dir == -1){
+        rightmotorA1 = 0;
+        rightmotorA2 = 1;
+        leftmotorB1 = 1;
+        leftmotorB2 = 1;
+        
+        int temp = encoderRight;
+        while (count < ticks){
+            if (temp != encoderRight){ count++; } 
+            temp = encoderRight;
+        }
+    }
+    
+    rightmotorA1 = 1;     
     rightmotorA2 = 1;
     leftmotorB1 = 1;
     leftmotorB2 = 1;
-    wait10ms(dur);
     return;
 }
 
